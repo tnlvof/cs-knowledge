@@ -342,6 +342,79 @@ AI 채점에 사용되는 Gemini API 비용을 후원받는 시스템. **과금 
 - **후원 안내 팝업**: 레벨 10 도달 시 1회 노출 ("이 서비스는 AI API 비용으로 운영됩니다. 후원으로 서비스 유지를 도와주세요!")
 - 강제성 없음, 닫기 버튼 항상 존재
 
+### 4.5 캐릭터 자랑하기 (공유 시스템)
+
+#### 4.5.1 캐릭터 카드 이미지 자동 생성
+
+서버에서 캐릭터 정보를 기반으로 트레이딩 카드 스타일 이미지를 동적 생성한다.
+Next.js의 `ImageResponse` (og image generation)를 활용.
+
+```
+┌─────────────────────────┐
+│  ✦ 메AI플스토리 ✦        │
+│ ┌─────────────────────┐ │
+│ │                     │ │
+│ │   🧑‍💻 [캐릭터 이미지]  │ │
+│ │   (장착 아이템 포함)   │ │
+│ │                     │ │
+│ └─────────────────────┘ │
+│                         │
+│  닉네임                  │
+│  Lv.47 데이터 마법사      │
+│  ─────────────────────  │
+│  ⚔ 정답률 78%            │
+│  📖 총 342문제 풀이       │
+│  🏆 칭호: DB 마스터       │
+│  🔥 최고 콤보: 12연속     │
+│  ─────────────────────  │
+│  ❤️ 골드 서포터            │
+│                         │
+│  meaiple.gg/닉네임       │
+└─────────────────────────┘
+```
+
+카드 디자인:
+- 픽셀아트 테두리 프레임
+- 장착한 코스튬 아이템이 캐릭터에 반영
+- 후원 뱃지 티어에 따라 카드 테두리 색상 변경 (골드 후원자 = 금색 테두리)
+- 직업별 배경색 (네트워크 기사 = 블루, 데이터 마법사 = 퍼플 등)
+
+#### 4.5.2 공개 프로필 페이지
+
+`/profile/[nickname]` 경로로 누구나 접근 가능한 공개 프로필 페이지.
+
+- 로그인 없이 열람 가능
+- 캐릭터 카드와 동일한 정보 표시 + 분야별 레이더 차트
+- OG 메타 태그에 캐릭터 카드 이미지 삽입 → 링크 공유 시 미리보기에 카드가 뜸
+
+```html
+<meta property="og:title" content="Lv.47 데이터 마법사 | 메AI플스토리" />
+<meta property="og:description" content="닉네임님의 CS 모험 기록" />
+<meta property="og:image" content="/api/og/profile/닉네임" />
+```
+
+→ 카카오톡, 슬랙, 디스코드, 트위터 등에서 링크만 붙여넣으면 카드 이미지가 미리보기로 노출.
+
+#### 4.5.3 공유 방법
+
+프로필 화면 하단 "자랑하기" 버튼 탭 시:
+
+| 방법 | 구현 |
+|------|------|
+| **링크 복사** | 공개 프로필 URL 클립보드 복사 (`meaiple.gg/닉네임`) |
+| **이미지 저장** | 캐릭터 카드 이미지 PNG 다운로드 (갤러리 저장) |
+| **네이티브 공유** | Web Share API → OS 공유 시트 (카카오톡, 인스타, 문자 등 한 번에) |
+
+- Web Share API 지원 시: OS 네이티브 공유 시트 호출 (모바일에서 카톡, 인스타 등 바로 선택)
+- 미지원 시: 링크 복사 + 이미지 저장 폴백
+
+#### 4.5.4 자랑하기 보너스
+
+공유 행위에 대한 소소한 보상으로 바이럴 유도:
+
+- 첫 공유 시: +50 EXP 보너스 + "소셜 모험가" 칭호 해금
+- 공유 링크로 신규 유저 유입 시: 레퍼럴 보너스 +100 EXP (추후 Phase 2)
+
 ---
 
 ## 5. UI/UX 설계
@@ -593,6 +666,9 @@ MP/스태미나 바: #3742FA → #70A1FF (블루 그라데이션)
 |------|------|------|
 | id | uuid (PK) | Supabase Auth user ID |
 | nickname | text | 게임 닉네임 |
+| gem_balance | int | 보유 젬 (기본 0) |
+| total_donated | int | 누적 후원 금액 (원) |
+| supporter_tier | text | 후원 뱃지 ('none' / 'bronze' / 'silver' / 'gold') |
 | level | int | 현재 레벨 (1~100) |
 | exp | int | 현재 경험치 |
 | hp | int | 현재 HP |
@@ -745,6 +821,9 @@ MP/스태미나 바: #3742FA → #70A1FF (블루 그라데이션)
 - `user_achievements`: 본인 데이터만 읽기/쓰기
 - `daily_quests`: 본인 데이터만 읽기/쓰기
 - `battle_sessions`: 본인 데이터만 읽기/쓰기
+- `shop_items`: 모든 사용자 읽기 가능 (public)
+- `user_items`: 본인 데이터만 읽기/쓰기
+- `donations`: 본인 데이터만 읽기, 서버만 쓰기 (service_role)
 
 ---
 
@@ -787,6 +866,25 @@ MP/스태미나 바: #3742FA → #70A1FF (블루 그라데이션)
 |--------|----------|------|
 | GET | `/api/quests/daily` | 오늘의 일일 퀘스트 |
 | GET | `/api/achievements` | 업적 목록 + 달성 여부 |
+
+### 7.6 공유/공개 프로필
+
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| GET | `/api/og/profile/[nickname]` | OG 캐릭터 카드 이미지 동적 생성 (ImageResponse) |
+| GET | `/api/profile/[nickname]` | 공개 프로필 데이터 조회 |
+
+### 7.7 후원/아이템샵
+
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| POST | `/api/payment/ready` | 토스페이먼츠 결제 준비 (orderId 생성) |
+| POST | `/api/payment/confirm` | 결제 승인 (토스 successUrl 콜백 후) |
+| GET | `/api/payment/history` | 후원 내역 조회 |
+| GET | `/api/shop/items` | 아이템샵 상품 목록 |
+| POST | `/api/shop/purchase` | 아이템 구매 (젬 차감) |
+| PATCH | `/api/shop/equip` | 아이템 장착/해제 |
+| GET | `/api/shop/inventory` | 내 보유 아이템 목록 |
 
 ---
 
@@ -838,6 +936,9 @@ cs-knowledge/
 │   │   ├── world/            # 월드맵 (메인)
 │   │   ├── battle/           # 전투 화면
 │   │   ├── result/           # 전투 결과
+│   │   ├── shop/             # 아이템샵
+│   │   ├── donate/           # 후원하기 (결제)
+│   │   ├── profile/[nickname]/ # 공개 프로필 (공유용)
 │   │   ├── profile/          # 캐릭터 프로필
 │   │   ├── history/          # 히스토리
 │   │   ├── achievements/     # 칭호/업적
@@ -847,7 +948,9 @@ cs-knowledge/
 │   │       ├── game/
 │   │       ├── battle/
 │   │       ├── history/
-│   │       └── quests/
+│   │       ├── quests/
+│   │       ├── payment/        # 토스페이먼츠 결제
+│   │       └── shop/           # 아이템샵
 │   ├── components/           # 공통 컴포넌트
 │   │   ├── ui/               # 기본 UI (버튼, 카드 등)
 │   │   ├── game/             # 게임 UI (HP바, EXP바 등)
@@ -856,6 +959,7 @@ cs-knowledge/
 │   ├── lib/                  # 유틸리티
 │   │   ├── supabase/         # Supabase 클라이언트
 │   │   ├── gemini/           # Gemini AI 채점
+│   │   ├── toss-payments/    # 토스페이먼츠 SDK
 │   │   ├── game-logic/       # 게임 로직 (EXP, 레벨업, 전직)
 │   │   └── storage/          # localStorage 관리
 │   ├── hooks/                # Custom hooks
@@ -893,6 +997,10 @@ cs-knowledge/
 - [x] 오답 노트
 - [x] 분야별 통계
 - [x] 문제 은행 초기 구축 (8분야 × 50문제)
+- [x] API 비용 후원 (토스페이먼츠)
+- [x] 아이템샵 (코스튬 꾸미기)
+- [x] 후원자 뱃지
+- [x] 캐릭터 자랑하기 (카드 이미지 + 공개 프로필 + 공유)
 
 ### 미포함 (Phase 2+)
 
