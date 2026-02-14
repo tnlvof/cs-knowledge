@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 
 const VALID_AVATARS = ["warrior", "mage", "archer", "healer"];
 
@@ -38,9 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getAuthUser(supabase);
 
     if (!user) {
       // 비로그인: 닉네임 중복 체크만 하고 클라이언트에서 localStorage로 처리

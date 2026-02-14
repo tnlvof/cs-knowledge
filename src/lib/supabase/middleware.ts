@@ -32,8 +32,8 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // 세션 갱신
-  await supabase.auth.getUser();
+  // 세션 갱신 (비대칭 키 사용 시 로컬 JWT 검증으로 1-5ms, 기존 getUser()는 50-200ms)
+  await supabase.auth.getClaims();
 
   return supabaseResponse;
 }

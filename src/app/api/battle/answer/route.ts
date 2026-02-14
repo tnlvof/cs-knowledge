@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import { gradeAnswer } from "@/lib/gemini/grading";
 import { calculateDamage } from "@/lib/game-logic/battle";
 import { calculateExp, checkLevelChange } from "@/lib/game-logic/exp";
@@ -14,9 +14,7 @@ type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getAuthUser(supabase);
 
     if (!user) {
       return NextResponse.json(
