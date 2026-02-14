@@ -165,6 +165,76 @@ body {
     radial-gradient(circle at 50% 50%, rgba(254, 119, 2, 0.04) 0%, transparent 70%);
 }
 
+/* ===== 메인 페이지 밤하늘 배경 ===== */
+@keyframes twinkle-star {
+  0%, 100% { opacity: 0.1; transform: scale(0.8); }
+  50% { opacity: 0.9; transform: scale(1.2); }
+}
+
+@keyframes drift-cloud {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(calc(100vw + 100%)); }
+}
+
+@keyframes title-glow {
+  0%, 100% { text-shadow: 2px 2px 0 #5C2A1E, -1px -1px 0 rgba(245,180,72,0.5), 0 0 20px rgba(254,119,2,0.3); }
+  50% { text-shadow: 2px 2px 0 #5C2A1E, -1px -1px 0 rgba(245,180,72,0.8), 0 0 40px rgba(254,119,2,0.6), 0 0 80px rgba(245,180,72,0.2); }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes maple-leaf-fall {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+/* 밤하늘 그라디언트 */
+.maple-night-sky {
+  background: linear-gradient(
+    180deg,
+    #0B1628 0%,
+    #162544 25%,
+    #1E3A5F 45%,
+    #2D5A3E 70%,
+    #3A7D44 85%,
+    #4A9150 95%,
+    #5C2A1E 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+/* 별 레이어 */
+.maple-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.maple-stars span {
+  position: absolute;
+  color: #FFFBE6;
+  animation: twinkle-star var(--star-duration, 3s) infinite;
+  animation-delay: var(--star-delay, 0s);
+  font-size: var(--star-size, 6px);
+}
+
+/* 메이플 나뭇잎 떨어지기 */
+.maple-leaf {
+  position: absolute;
+  pointer-events: none;
+  animation: maple-leaf-fall var(--leaf-duration, 8s) linear infinite;
+  animation-delay: var(--leaf-delay, 0s);
+  font-size: var(--leaf-size, 14px);
+  left: var(--leaf-x, 50%);
+  top: 0;
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
